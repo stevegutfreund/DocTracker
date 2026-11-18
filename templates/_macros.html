@@ -1,0 +1,51 @@
+{# ---- icons (inline SVG, inherit currentColor) ---- #}
+{% macro icon(name, size=16) -%}
+<svg class="ico" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+{%- if name == 'calendar' -%}<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>
+{%- elif name == 'file' -%}<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>
+{%- elif name == 'external' -%}<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>
+{%- elif name == 'edit' -%}<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>
+{%- elif name == 'plus' -%}<path d="M12 5v14M5 12h14"/>
+{%- elif name == 'alert' -%}<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2.4 17.5A2 2 0 0 0 4.1 20.5h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>
+{%- elif name == 'check' -%}<path d="M20 6 9 17l-5-5"/>
+{%- elif name == 'pin' -%}<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>
+{%- elif name == 'shield' -%}<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6z"/>
+{%- elif name == 'chevron' -%}<path d="m9 6 6 6-6 6"/>
+{%- elif name == 'download' -%}<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}
+
+{% macro badge(status, info) -%}
+<span class="badge badge-{{ status }}"><span class="dot" aria-hidden="true"></span>{{ info.label }}</span>
+{%- endmacro %}
+
+{% macro avatar(name) -%}
+<span class="avatar" aria-hidden="true">{{ name[:1]|upper }}</span>
+{%- endmacro %}
+
+{% macro scan_link(doc) -%}
+{% if doc.links %}<span class="scan-links">{% for l in doc.links %}<a class="chip" href="{{ l.url }}" target="_blank" rel="noopener noreferrer" title="Open in Google Drive">{{ icon('file', 13) }}<bdi>{{ l.label }}</bdi></a>{% endfor %}</span>{% endif %}
+{%- endmacro %}
+
+{% macro appt_when(a) -%}
+{{ a.when.strftime('%a') }} {{ a.when|fmt_date }}{% if a.time %}, {{ a.time }}{% endif %}
+{%- endmacro %}
+
+{% macro appt_line(d) -%}
+{% if d.appt %}<div class="appt-line{{ ' appt-past' if d.appt.past }}">{{ icon('calendar', 13) }}<span>{{ 'Appointment was' if d.appt.past else 'Renewal booked' }} · {{ appt_when(d.appt) }}</span></div>{% endif %}
+{%- endmacro %}
+
+{% macro booked_tag(d) -%}{%- endmacro %}
+
+{% macro type_label(name, with_icon=false) -%}
+{% if with_icon and type_icons.get(name) %}<span class="type-icon" aria-hidden="true">{{ type_icons[name] }}</span>{% endif %}{{ name }}
+{%- endmacro %}
+
+{% macro number(doc) -%}
+{% if doc.number_last4 %}<span class="num">••{{ doc.number_last4 }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro doc_title(doc, with_person=true) -%}
+{% if with_person %}<strong>{{ doc.person }}</strong> <span class="sep">·</span> {% endif %}{{ doc.doc_type }}{% if doc.country %} <span class="muted">{{ doc.country }}</span>{% endif %} {{ number(doc) }}
+{%- endmacro %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, scan_link, type_label, appt_when, icon, avatar, number with context %}
+{% block title %}Documents · DocTracker{% endblock %}
+
+{% macro doc_table(rows, show_type=true) %}
+<div class="table-card">
+<table class="doc-table">
+  <thead>
+    <tr>
+      <th>Person</th><th>Document</th><th>Number</th>
+      <th>Issued</th><th>Expires</th><th>Status</th><th>Scans</th><th><span class="sr-only">Actions</span></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for d in rows %}
+    <tr>
+      <td class="cell-person"><span class="person-cell">{{ avatar(d.person) }}<strong>{{ d.person }}</strong></span></td>
+      <td data-label="Document" class="cell-doc">
+        <span class="cell-strong">{{ d.doc_type }}</span>
+        {% if d.country %}<span class="row-sub">{{ d.country }}</span>{% endif %}
+      </td>
+      <td data-label="Number">{{ number(d) if d.number_last4 else '—' }}</td>
+      <td data-label="Issued" class="nowrap">{{ d.issue|fmt_date if d.issue else '—' }}</td>
+      <td data-label="Expires" class="nowrap">
+        <span class="cell-strong">{{ d.expiry|fmt_date if d.expiry else '—' }}</span>
+        {% if d.relative %}<span class="row-sub">{{ d.relative }}</span>{% endif %}
+      </td>
+      <td data-label="Status">
+        {{ badge(d.status, d.status_info) }}
+        {% if d.appt %}<span class="appt-cell{{ ' appt-past' if d.appt.past }}" title="{{ d.appt.place }}">{{ icon('calendar', 12) }}{{ appt_when(d.appt) }}</span>{% endif %}
+      </td>
+      <td data-label="Scans" class="cell-scans">{{ scan_link(d) if d.links else '—' }}</td>
+      <td class="actions">
+        <a class="icon-btn" href="{{ url_for('docs.edit_document', doc_id=d.id) }}" title="Edit" aria-label="Edit {{ d.person }}'s {{ d.doc_type }}">{{ icon('edit') }}</a>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endmacro %}
+
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>Documents</h1>
+    <p class="muted">{{ items|length }} document{{ '' if items|length == 1 else 's' }}{% if f.person or f.type or f.status %} matching the filters{% endif %}</p>
+  </div>
+</div>
+
+<form class="toolbar" method="get" id="filters">
+  <label class="field-inline"><span>Person</span>
+    <select name="person">
+      <option value="">Everyone</option>
+      {% for p in people %}<option value="{{ p }}" {{ 'selected' if f.person == p }}>{{ p }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="field-inline"><span>Type</span>
+    <select name="type">
+      <option value="">All types</option>
+      {% for t in doc_types %}<option value="{{ t }}" {{ 'selected' if f.type == t }}>{{ t }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="field-inline"><span>Status</span>
+    <select name="status">
+      <option value="">Any status</option>
+      {% for key, s in statuses.items() %}<option value="{{ key }}" {{ 'selected' if f.status == key }}>{{ s.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="field-inline"><span>View</span>
+    <select name="group">
+      <option value="">Sorted by expiry</option>
+      <option value="type" {{ 'selected' if f.group == 'type' }}>Grouped by type</option>
+    </select>
+  </label>
+  <div class="toolbar-actions">
+    <button class="btn filters-apply" type="submit">Apply</button>
+    {% if f.person or f.type or f.status or f.group %}<a class="btn btn-ghost" href="{{ url_for('docs.list_documents') }}">Clear filters</a>{% endif %}
+  </div>
+</form>
+
+{% if not items %}
+  <div class="card card-empty"><div><strong>No documents match</strong><p class="muted">Try a different filter, or <a href="{{ url_for('docs.list_documents') }}">show everything</a>.</p></div></div>
+{% elif groups %}
+  {% for g in groups %}
+    <section class="type-group">
+      <h2 class="group-title">
+        {{ type_label(g.name, with_icon=true) }} <span class="count-pill">{{ g.count }}</span>
+        {% if g.travel %}<span class="tag">Travel</span>{% endif %}
+      </h2>
+      {{ doc_table(g.docs, show_type=false) }}
+    </section>
+  {% endfor %}
+{% else %}
+  {{ doc_table(items) }}
+{% endif %}
+
+{% endblock %}

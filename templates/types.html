@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}Types · DocTracker{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>Document types</h1>
+    <p class="muted">The order here is used on the Overview and in the type list when adding a document. Renaming a type updates every document that uses it.</p>
+  </div>
+</div>
+
+<section class="card card-flush">
+  <div class="type-rows-head" aria-hidden="true">
+    <span>Icon</span><span>Name</span><span>Suggested link labels</span><span>Trip check</span><span></span>
+  </div>
+  <ul class="type-rows">
+  {% for t in types %}
+    {% set i = loop.index0 %}
+    {% set n = usage.get(t.name, 0) %}
+    <li>
+      <form class="type-edit" method="post" action="{{ url_for('docs.edit_type', idx=i) }}">
+        <input class="type-icon-input" name="icon" value="{{ t.icon }}" maxlength="4" aria-label="Icon" placeholder="–">
+        <span class="type-name-cell">
+          <input name="name" value="{{ t.name }}" maxlength="40" required aria-label="Name">
+          <span class="type-usage">{{ n }} document{{ '' if n == 1 else 's' }}</span>
+        </span>
+        <input class="type-links-input" name="links" value="{{ t.links|join(', ') }}" aria-label="Link labels" placeholder="e.g. Front, Back" title="Suggested scan-link labels, comma-separated" dir="auto">
+        <label class="check" title="The trip check looks at documents of this type">
+          <input type="checkbox" name="travel" value="1" {{ 'checked' if t.travel }}> Travel
+        </label>
+        <button class="btn btn-small" type="submit">Save</button>
+      </form>
+      <div class="type-tools">
+        <form method="post" action="{{ url_for('docs.move_type', idx=i) }}">
+          <input type="hidden" name="dir" value="up">
+          <button class="icon-btn" type="submit" {{ 'disabled' if loop.first }} aria-label="Move up" title="Move up">↑</button>
+        </form>
+        <form method="post" action="{{ url_for('docs.move_type', idx=i) }}">
+          <input type="hidden" name="dir" value="down">
+          <button class="icon-btn" type="submit" {{ 'disabled' if loop.last }} aria-label="Move down" title="Move down">↓</button>
+        </form>
+        <form method="post" action="{{ url_for('docs.delete_type', idx=i) }}" data-confirm="Delete the type {{ t.name }}?">
+          <button class="icon-btn icon-btn-danger" type="submit" {{ 'disabled' if n }} aria-label="Delete"
+                  title="{{ 'In use: change those documents first' if n else 'Delete' }}">✕</button>
+        </form>
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+
+<section class="card">
+  <header class="card-head"><h2>Add a type</h2></header>
+  <form class="type-edit type-add" method="post" action="{{ url_for('docs.add_type') }}">
+    <input class="type-icon-input" name="icon" maxlength="4" aria-label="Icon" placeholder="–">
+    <input name="name" maxlength="40" required placeholder="Name, e.g. Health card" aria-label="Name">
+    <input class="type-links-input" name="links" aria-label="Link labels" placeholder="Link labels, e.g. Front, Back" dir="auto">
+    <label class="check"><input type="checkbox" name="travel" value="1"> Travel</label>
+    <button class="btn btn-primary btn-small" type="submit">{{ icon('plus', 14) }}Add type</button>
+  </form>
+  <p class="hint card-foot">The icon is optional: paste any emoji (on Windows, press Win + . to pick one). Link labels are comma-separated and suggested as scan links when adding a document of this type, for example <bdi>Card, ספח, Card + ספח</bdi>.</p>
+</section>
+
+{% endblock %}

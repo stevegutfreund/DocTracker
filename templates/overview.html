@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, scan_link, doc_title, type_label, appt_line, appt_when, icon, avatar, number with context %}
+{% block title %}Overview · DocTracker{% endblock %}
+{% block content %}
+
+{% if ov.total == 0 %}
+  <section class="empty card">
+    <span class="empty-icon">{{ icon('file', 28) }}</span>
+    <h1>No documents yet</h1>
+    <p>Add each passport, ID card and licence once: who it belongs to, the dates, and the Drive link to its scan. It takes about a minute per document.</p>
+    <a class="btn btn-primary" href="{{ url_for('docs.new_document') }}">{{ icon('plus') }}Add the first document</a>
+  </section>
+{% else %}
+
+<div class="page-head">
+  <div>
+    <h1>Overview</h1>
+    <p class="muted">{{ ov.total }} document{{ '' if ov.total == 1 else 's' }} across {{ ov.people_count }} {{ 'person' if ov.people_count == 1 else 'people' }}</p>
+  </div>
+</div>
+
+<section class="stats card" aria-label="Status summary">
+  <a class="stat" href="{{ url_for('docs.list_documents') }}">
+    <span class="stat-label">All documents</span>
+    <span class="stat-value">{{ ov.total }}</span>
+  </a>
+  {% for key in ("expired", "serious", "warning", "good") %}
+  <a class="stat stat-{{ key }}{{ ' is-zero' if not ov.counts[key] }}" href="{{ url_for('docs.list_documents', status=key) }}">
+    <span class="stat-label"><span class="dot dot-{{ key }}" aria-hidden="true"></span>{{ statuses[key].label }}</span>
+    <span class="stat-value">{{ ov.counts[key] }}</span>
+  </a>
+  {% endfor %}
+</section>
+
+{% if ov.appt_done %}
+<section class="alert">
+  <span class="alert-icon">{{ icon('alert', 18) }}</span>
+  <div class="alert-body">
+    <strong>Appointment has passed. Update these documents with the renewed details.</strong>
+    <ul class="alert-list">
+    {% for d in ov.appt_done %}
+      <li>
+        <span>{{ doc_title(d) }}</span>
+        <a class="btn btn-small" href="{{ url_for('docs.edit_document', doc_id=d.id) }}">Enter renewed details</a>
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+<div class="layout-main">
+  <section class="card">
+    <header class="card-head">
+      <h2>Needs attention</h2>
+      {% if ov.attention %}<span class="count-pill">{{ ov.attention|length }}</span>{% endif %}
+    </header>
+    {% if ov.attention %}
+      <ul class="rows">
+      {% for d in ov.attention %}
+        <li class="row">
+          {{ avatar(d.person) }}
+          <div class="row-main">
+            <div class="row-title">{{ doc_title(d) }}</div>
+            <div class="row-sub">Expires {{ d.expiry|fmt_date }} · {{ d.relative }}</div>
+            {{ appt_line(d) }}
+          </div>
+          <div class="row-side">
+            {{ badge(d.status, d.status_info) }}
+            <a class="icon-btn" href="{{ url_for('docs.edit_document', doc_id=d.id) }}" title="Edit" aria-label="Edit {{ d.person }}'s {{ d.doc_type }}">{{ icon('edit') }}</a>
+          </div>
+        </li>
+      {% endfor %}
+      </ul>
+    {% else %}
+      <div class="card-empty">
+        <span class="ok-icon">{{ icon('check', 18) }}</span>
+        <div>
+          <strong>All clear</strong>
+          <p class="muted">Nothing expires in the next 12 months.</p>
+        </div>
+      </div>
+      {% if ov.upcoming %}
+        <h3 class="subhead">Next to expire</h3>
+        <ul class="rows">
+        {% for d in ov.upcoming %}
+          <li class="row">
+            {{ avatar(d.person) }}
+            <div class="row-main">
+              <div class="row-title">{{ doc_title(d) }}</div>
+              <div class="row-sub">Expires {{ d.expiry|fmt_date }} · {{ d.relative }}</div>
+            </div>
+          </li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endif %}
+  </section>
+
+  <div class="stack">
+    <section class="card">
+      <header class="card-head"><h2>Appointments</h2></header>
+      {% if ov.appt_slots %}
+        <ul class="appts">
+        {% for s in ov.appt_slots %}
+          <li class="appt">
+            <div class="cal" aria-hidden="true">
+              <span class="cal-month">{{ s.appt.when.strftime('%b') }}</span>
+              <span class="cal-day">{{ s.appt.when.day }}</span>
+            </div>
+            <div class="appt-body">
+              <div class="appt-when">{{ s.appt.when.strftime('%A') }}{% if s.appt.time %}, {{ s.appt.time }}{% endif %} <span class="muted">· {{ s.appt.relative }}</span></div>
+              {% if s.appt.place %}<div class="appt-place">{{ icon('pin', 13) }}<bdi>{{ s.appt.place }}</bdi></div>{% endif %}
+              <div class="appt-who">
+                {% for d in s.docs %}
+                  <a class="chip" href="{{ url_for('docs.edit_document', doc_id=d.id) }}" title="{{ d.doc_type }}{% if d.country %} ({{ d.country }}){% endif %}{% if d.appt.notes %}: {{ d.appt.notes }}{% endif %}">{{ d.person }}</a>
+                {% endfor %}
+              </div>
+            </div>
+          </li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small">No renewal appointments booked.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <header class="card-head"><h2>Expiries by year</h2></header>
+      {% if ov.years %}
+        <ul class="year-bars">
+        {% for y in ov.years %}
+          <li class="year-row{{ ' is-empty' if not y.count }}" tabindex="{{ 0 if y.count else -1 }}">
+            <span class="year-label">{{ y.year }}</span>
+            <span class="year-track">{% if y.count %}<span class="year-bar" style="width: {{ y.pct }}%"></span>{% endif %}</span>
+            <span class="year-count">{{ y.count or '–' }}</span>
+            {% if y.docs %}
+            <span class="tooltip" role="tooltip">
+              {% for d in y.docs %}<span><strong>{{ d.person }}</strong> · {{ d.doc_type }} · {{ d.expiry|fmt_date }}</span>{% endfor %}
+            </span>
+            {% endif %}
+          </li>
+        {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small">No future expiry dates on file.</p>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <header class="card-head">
+        <h2>By type</h2>
+        <a class="card-link" href="{{ url_for('docs.list_types') }}">Manage</a>
+      </header>
+      <ul class="type-dist">
+      {% for t in ov.types if t.count %}
+        <li>
+          <a href="{{ url_for('docs.list_documents', type=t.name) }}">
+            <span class="type-dist-head"><span>{{ type_label(t.name, with_icon=true) }}</span><span class="type-dist-count">{{ t.count }}</span></span>
+            <span class="stackbar" title="{% for key in ('expired', 'serious', 'warning', 'good', 'none') if t.counts[key] %}{{ t.counts[key] }} {{ statuses[key].label|lower }}{{ ', ' if not loop.last }}{% endfor %}">
+              {% for key in ("expired", "serious", "warning", "good", "none") if t.counts[key] %}<span class="seg seg-{{ key }}" style="flex-grow: {{ t.counts[key] }}"></span>{% endfor %}
+            </span>
+            <span class="type-dist-legend">
+              {% for key in ("expired", "serious", "warning", "good", "none") if t.counts[key] %}<span><span class="dot dot-{{ key }}" aria-hidden="true"></span>{{ t.counts[key] }} {{ statuses[key].label|lower }}</span>{% endfor %}
+            </span>
+          </a>
+        </li>
+      {% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+
+<section>
+  <div class="section-head">
+    <h2>People</h2>
+  </div>
+  <div class="people-grid">
+  {% for p in ov.people %}
+    <article class="card person">
+      <header class="person-head">
+        {{ avatar(p.name) }}
+        <div class="person-id">
+          <a href="{{ url_for('docs.list_documents', person=p.name) }}" class="person-name">{{ p.name }}</a>
+          <span class="muted small">{{ p.docs|length }} document{{ '' if p.docs|length == 1 else 's' }}</span>
+        </div>
+        <a class="icon-btn" href="{{ url_for('docs.new_document', person=p.name) }}" title="Add a document for {{ p.name }}" aria-label="Add a document for {{ p.name }}">{{ icon('plus') }}</a>
+      </header>
+      <ul class="person-docs">
+      {% for d in p.docs %}
+        <li>
+          <a href="{{ url_for('docs.edit_document', doc_id=d.id) }}" class="person-doc">
+            <span class="person-doc-main">
+              <span class="person-doc-title">{{ d.doc_type }}{% if d.country %} <span class="muted">{{ d.country }}</span>{% endif %}</span>
+              <span class="row-sub">{{ d.expiry|fmt_date if d.expiry else 'No expiry' }}{% if d.relative %} · {{ d.relative }}{% endif %}</span>
+            </span>
+            {{ badge(d.status, d.status_info) }}
+          </a>
+        </li>
+      {% endfor %}
+      </ul>
+    </article>
+  {% endfor %}
+  </div>
+</section>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% from "_macros.html" import badge, scan_link, avatar, number, icon with context %}
+{% block title %}Trip check · DocTracker{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>Trip check</h1>
+    <p class="muted">Does everyone have a passport valid for 6 months after you get back? Many countries refuse entry with less than that.</p>
+  </div>
+</div>
+
+{% if not people %}
+  <div class="card card-empty"><div><strong>No travel documents yet</strong><p class="muted">Add some passports first.</p></div></div>
+{% else %}
+<form class="card form" method="get">
+  <div class="trip-grid">
+    <label class="field">Leaving
+      <input type="date" name="depart" value="{{ depart }}" required>
+    </label>
+    <label class="field">Returning
+      <input type="date" name="return" value="{{ ret }}" required>
+    </label>
+    <fieldset class="field trip-who">
+      <legend>Who's travelling</legend>
+      <div class="checks">
+      {% for p in people %}
+        <label class="check-pill"><input type="checkbox" name="who" value="{{ p }}" {{ 'checked' if p in chosen }}><span>{{ p }}</span></label>
+      {% endfor %}
+      </div>
+    </fieldset>
+  </div>
+  <div class="form-footer form-footer-inline">
+    <span class="hint">
+      {% if travel_types %}Checks documents of type: {{ travel_types|join(', ') }}.{% else %}No type is marked as a travel document.{% endif %}
+      <a href="{{ url_for('docs.list_types') }}">Change</a>
+    </span>
+    <button class="btn btn-primary" type="submit">Check passports</button>
+  </div>
+</form>
+{% endif %}
+
+{% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
+
+{% if results is not none %}
+<section class="card">
+  <header class="card-head"><h2>Result</h2></header>
+  <ul class="rows">
+  {% for r in results %}
+    <li class="row">
+      {{ avatar(r.name) }}
+      <div class="row-main">
+        <div class="row-title"><strong>{{ r.name }}</strong></div>
+        {% if r.passports %}
+          {% for p in r.passports %}
+            <div class="row-sub trip-line">
+              <span>{{ p.doc_type }}{% if p.country %} · {{ p.country }}{% endif %} {{ number(p) }} · expires {{ p.expiry|fmt_date }} · {{ p.note }}</span>
+              {{ scan_link(p) }}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="row-sub">No passport on file.</div>
+        {% endif %}
+      </div>
+      <div class="row-side">
+        {% if r.overall == 'good' %}
+          <span class="badge badge-good"><span class="dot"></span>OK to travel</span>
+        {% elif r.overall == 'serious' %}
+          <span class="badge badge-serious"><span class="dot"></span>Check entry rules</span>
+        {% elif r.overall == 'warning' %}
+          <span class="badge badge-warning"><span class="dot"></span>Add expiry date</span>
+        {% else %}
+          <span class="badge badge-expired"><span class="dot"></span>Needs a passport</span>
+        {% endif %}
+      </div>
+    </li>
+  {% endfor %}
+  </ul>
+  <p class="hint card-foot">Counted from the return date, which is the strictest reading. Some countries count from your arrival, so check your destination's rules.</p>
+</section>
+{% endif %}
+
+{% endblock %}

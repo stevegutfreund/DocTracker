@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}Reminders · DocTracker{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h1>Calendar reminders</h1>
+    <p class="muted">Download a calendar file and import it into Google Calendar. Renewals can take months, so it's best to be reminded early.</p>
+  </div>
+</div>
+
+<div class="layout-split">
+  <form class="card form" method="get" action="{{ url_for('docs.reminders_ics') }}">
+    <header class="card-head"><h2>Remind me</h2></header>
+    <fieldset class="field">
+      <legend class="sr-only">Remind me</legend>
+      <div class="checks">
+      {% for m, label in offsets %}
+        <label class="check-pill"><input type="checkbox" name="m" value="{{ m }}" {{ 'checked' if m in (9, 3, 0) }}><span>{{ label }}</span></label>
+      {% endfor %}
+      </div>
+    </fieldset>
+    <input type="hidden" name="sent" value="1">
+    <label class="check appt-check"><input type="checkbox" name="appts" value="1" checked> Include booked renewal appointments (timed, with a reminder the day before)</label>
+    <div class="form-footer form-footer-inline">
+      <span></span>
+      <button class="btn btn-primary" type="submit">{{ icon('download') }}Download .ics</button>
+    </div>
+  </form>
+
+  <section class="card">
+    <header class="card-head"><h2>How to import</h2></header>
+    <ol class="steps">
+      <li>In Google Calendar, open <strong>Settings → Import &amp; export</strong>.</li>
+      <li>Choose the downloaded <span class="mono">document-expiry.ics</span> and the calendar to add it to.</li>
+      <li>After adding or renewing documents, download and import again. Events keep the same IDs, so re-importing updates them instead of making copies.</li>
+    </ol>
+    <p class="hint card-foot">The events include names, document types and expiry dates. They never include numbers or Drive links.</p>
+  </section>
+</div>
+
+{% endblock %}

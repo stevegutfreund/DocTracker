@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon with context %}
+{% block title %}{{ 'Edit' if doc.id else 'Add' }} document · DocTracker{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <a class="back" href="{{ url_for('docs.list_documents') }}">← Documents</a>
+    <h1>{% if doc.id %}{{ doc.person }}'s {{ doc.doc_type|lower }}{% else %}Add document{% endif %}</h1>
+    {% if not doc.id %}<p class="muted">Record the details once. The scan stays in Google Drive and is only linked from here.</p>{% endif %}
+  </div>
+</div>
+
+{% if errors %}
+  <div class="flash flash-error" role="alert">
+    {% for e in errors %}<div>{{ e }}</div>{% endfor %}
+  </div>
+{% endif %}
+
+<form class="card form" method="post" id="doc-form" data-type-links='{{ type_links|tojson }}'>
+
+  <section class="form-section">
+    <div class="form-section-intro">
+      <h2>Document</h2>
+      <p>Who it belongs to and what it is.</p>
+    </div>
+    <div class="form-grid">
+      <label class="field">Person
+        <input name="person" list="people" value="{{ doc.person or '' }}" required autocomplete="off">
+        <datalist id="people">{% for p in people %}<option value="{{ p }}">{% endfor %}</datalist>
+      </label>
+
+      <label class="field">Type
+        <select name="doc_type" id="doc-type" required>
+          {% for t in doc_types %}<option value="{{ t.name }}" {{ 'selected' if doc.doc_type == t.name }}>{{ t.name }}</option>{% endfor %}
+        </select>
+        <span class="hint"><a href="{{ url_for('docs.list_types') }}">Manage types</a></span>
+      </label>
+
+      <label class="field">Issuing country
+        <input name="country" list="countries" value="{{ doc.country or '' }}" autocomplete="off">
+        <datalist id="countries">{% for c in countries %}<option value="{{ c }}">{% endfor %}</datalist>
+      </label>
+
+      <label class="field">Number, last 4 only
+        <input name="number_last4" value="{{ doc.number_last4 or '' }}" maxlength="4" autocomplete="off" class="mono" placeholder="e.g. 4821">
+        <span class="hint">Enough to tell documents apart. Don't store the full number.</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <div class="form-section-intro">
+      <h2>Validity</h2>
+      <p>The expiry date drives the status and reminders.</p>
+    </div>
+    <div class="form-grid">
+      <label class="field">Issue date
+        <input type="date" name="issue_date" value="{{ doc.issue_date or '' }}">
+      </label>
+      <label class="field">Expiry date
+        <input type="date" name="expiry_date" value="{{ doc.expiry_date or '' }}">
+        <span class="hint">Leave empty if it doesn't expire.</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <div class="form-section-intro">
+      <h2>Scans</h2>
+      <p>Links to the files in Google Drive. Keep sharing set to "Restricted".</p>
+    </div>
+    <div class="form-stack">
+      <div class="link-rows" id="link-rows">
+        <div class="link-row link-head" aria-hidden="true"><span>Label</span><span>Drive link</span></div>
+        {% for l in link_rows %}
+        <div class="link-row">
+          <input name="link_label" value="{{ l.label }}" maxlength="30" placeholder="Label" aria-label="Link label" dir="auto">
+          <input type="url" name="link_url" value="{{ l.url }}" placeholder="https://drive.google.com/file/d/…" aria-label="Drive link" autocomplete="off">
+        </div>
+        {% endfor %}
+      </div>
+      <div><button class="btn btn-small" type="button" id="add-link">{{ icon('plus', 14) }}Add another link</button></div>
+      <span class="hint">In Drive: right-click the file → Share → Copy link. Empty rows are ignored. Suggested labels per type can be changed on the <a href="{{ url_for('docs.list_types') }}">Types</a> page.</span>
+      <label class="field">Notes
+        <textarea name="notes" rows="2">{{ doc.notes or '' }}</textarea>
+      </label>
+    </div>
+  </section>
+
+  {% set a = doc.appointment or {} %}
+  <section class="form-section">
+    <div class="form-section-intro">
+      <h2>Renewal appointment</h2>
+      <p>Optional. After the renewal, enter the new expiry date (and number) and clear the appointment date.</p>
+    </div>
+    <div class="appt-grid">
+      <label class="field">Date <input type="date" name="appt_date" value="{{ a.date or '' }}"></label>
+      <label class="field">Time <input type="time" name="appt_time" value="{{ a.time or '' }}"></label>
+      <label class="field appt-place-field">Place
+        <input name="appt_place" list="places" value="{{ a.place or '' }}" maxlength="80" dir="auto" autocomplete="off">
+        <datalist id="places">{% for p in places %}<option value="{{ p }}">{% endfor %}</datalist>
+      </label>
+      <label class="field appt-notes">Appointment notes
+        <input name="appt_notes" value="{{ a.notes or '' }}" maxlength="200" dir="auto" placeholder="e.g. bring old passport + photo">
+      </label>
+    </div>
+  </section>
+
+  <div class="form-footer">
+    <a class="btn btn-ghost" href="{{ url_for('docs.list_documents') }}">Cancel</a>
+    {% if not doc.id %}<button class="btn" type="submit" name="again" value="1">Save and add another</button>{% endif %}
+    <button class="btn btn-primary" type="submit">Save</button>
+  </div>
+</form>
+
+{% if doc.id %}
+<form method="post" action="{{ url_for('docs.delete_document', doc_id=doc.id) }}" class="card danger-zone" data-confirm="Delete {{ doc.person }}'s {{ doc.doc_type }} from DocTracker?">
+  <div>
+    <strong>Delete this document</strong>
+    <p class="muted small">Removes it from DocTracker only. The scan in Drive is not touched.</p>
+  </div>
+  <button class="btn btn-danger" type="submit">Delete</button>
+</form>
+{% endif %}
+
+{% endblock %}
